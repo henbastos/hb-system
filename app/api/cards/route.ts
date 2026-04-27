@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  console.log('[DIAG POST /api/cards] body received:', JSON.stringify(body))
   const { deal_services, ...cardData } = body
 
   const { data: card, error } = await supabase
@@ -47,8 +46,6 @@ export async function POST(request: NextRequest) {
     .insert({ ...cardData, user_id: user.id })
     .select()
     .single()
-
-  console.log('[DIAG POST /api/cards] card inserted:', JSON.stringify(card), 'error:', error?.message)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -64,11 +61,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  console.log('[DIAG POST /api/cards] scheduled_at:', card?.scheduled_at, 'category:', card?.category)
-
   if (card && card.scheduled_at && card.category) {
     const { date, start_time } = scheduledToEvent(card.scheduled_at)
-    const eventPayload = {
+    await supabase.from('events').insert({
       user_id: user.id,
       card_id: card.id,
       title: card.title,
@@ -80,12 +75,7 @@ export async function POST(request: NextRequest) {
       description: card.description ?? null,
       color: null,
       meet_link: null,
-    }
-    console.log('[DIAG POST /api/cards] inserting event:', JSON.stringify(eventPayload))
-    const { data: eventData, error: eventError } = await supabase.from('events').insert(eventPayload).select().single()
-    console.log('[DIAG POST /api/cards] event result:', JSON.stringify(eventData), 'error:', eventError?.message)
-  } else {
-    console.log('[DIAG POST /api/cards] skipping event — condition not met (scheduled_at or category missing)')
+    })
   }
 
   return NextResponse.json({ card })
