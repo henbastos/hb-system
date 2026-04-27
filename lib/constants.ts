@@ -33,8 +33,9 @@ export const KANBAN_BOARDS = {
     columns: [
       'Lead',
       'Abordagem',
+      'Reunião agendada',
       'Diagnóstico',
-      'Proposta enviada',
+      'Proposta construção',
       'Construção',
       'Retainer',
       'Parceria',

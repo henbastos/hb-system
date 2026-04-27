@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: 'HB System',
   description: 'Sistema pessoal de produtividade',
   manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'HB System',
+  },
+  icons: {
+    apple: '/icon-192.png',
+  },
 }
 
 export const viewport: Viewport = {
