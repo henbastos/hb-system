@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 const NAV_ITEMS = [
   { href: '/cronograma', label: 'Cronograma', icon: '📅' },
   { href: '/tarefas', label: 'Tarefas', icon: '✅' },
+  { href: '/funil', label: 'Funil de Vendas', icon: '🎯' },
   { href: '/financeiro', label: 'Financeiro', icon: '💰' },
 ]
 

@@ -6,6 +6,25 @@ import { KANBAN_BOARDS, KanbanBoardKey, EVENT_CATEGORIES } from '@/lib/constants
 
 const CARD_CATEGORIES = Object.keys(EVENT_CATEGORIES)
 
+const TIME_SLOTS: string[] = Array.from({ length: 38 }, (_, i) => {
+  const mins = 5 * 60 + i * 30
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+})
+
+function initScheduledDate(utcString: string | null | undefined): string {
+  if (!utcString) return ''
+  const d = new Date(utcString)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
+function initScheduledTime(utcString: string | null | undefined): string {
+  if (!utcString) return '09:00'
+  const d = new Date(utcString)
+  const hhmm = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(11, 16)
+  const [h, m] = hhmm.split(':').map(Number)
+  return `${String(h).padStart(2, '0')}:${m < 30 ? '00' : '30'}`
+}
+
 interface ServiceRow {
   service_type: string
   value: string
@@ -18,11 +37,6 @@ interface CardModalProps {
   onClose: () => void
   onSave: (data: Partial<KanbanCard>) => Promise<void>
   onDelete: (id: string) => Promise<void>
-}
-
-function toLocalDatetimeString(utcString: string): string {
-  const d = new Date(utcString)
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
 
 function formatBRL(num: number): string {
@@ -45,9 +59,8 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
   const [title, setTitle] = useState(card?.title ?? '')
   const [description, setDescription] = useState(card?.description ?? '')
   const [columnName, setColumnName] = useState(card?.column_name ?? columns[0])
-  const [scheduledAt, setScheduledAt] = useState(
-    card?.scheduled_at ? toLocalDatetimeString(card.scheduled_at) : ''
-  )
+  const [scheduledDate, setScheduledDate] = useState(() => initScheduledDate(card?.scheduled_at))
+  const [scheduledTime, setScheduledTime] = useState(() => initScheduledTime(card?.scheduled_at))
   const [tagsInput, setTagsInput] = useState(card?.tags?.join(', ') ?? '')
   const [followup, setFollowup] = useState(card?.followup ?? false)
   const [category, setCategory] = useState(card?.category ?? '')
@@ -94,8 +107,8 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
       description: description.trim() || null,
       column_name: columnName,
       tags: tags.length > 0 ? tags : null,
-      scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-      category: scheduledAt && category ? category : null,
+      scheduled_at: scheduledDate ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : null,
+      category: scheduledDate && category ? category : null,
       followup,
       value: null,
       service_type: null,
@@ -176,6 +189,20 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
                 <label style={label}>Nome da negociação *</label>
                 <input type="text" value={dealName} onChange={e => setDealName(e.target.value)} required placeholder="Ex: Empresa ABC — Retainer" style={field} />
               </div>
+
+              {isEdit && card?.created_at && (
+                <div>
+                  <label style={label}>Criado em</label>
+                  <p style={{ ...field, margin: 0, color: 'var(--text-muted)', cursor: 'default' }}>
+                    {new Date(card.created_at).toLocaleString('pt-BR', {
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                      timeZone: 'America/Sao_Paulo',
+                    })}
+                  </p>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
                   <label style={label}>Empresa</label>
@@ -204,16 +231,26 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
 
           <div>
             <label style={label}>Data e hora</label>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={e => setScheduledAt(e.target.value)}
-              style={{ ...field, colorScheme: 'dark' }}
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={e => setScheduledDate(e.target.value)}
+                style={{ ...field, colorScheme: 'dark' }}
+              />
+              <select
+                value={scheduledTime}
+                onChange={e => setScheduledTime(e.target.value)}
+                disabled={!scheduledDate}
+                style={{ ...field, opacity: scheduledDate ? 1 : 0.4 }}
+              >
+                {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
           </div>
 
-          {/* Category — only when date/time is set */}
-          {scheduledAt && (
+          {/* Category — only when date is set */}
+          {scheduledDate && (
             <div>
               <label style={label}>Categoria no cronograma</label>
               <select value={category} onChange={e => setCategory(e.target.value)} style={field}>

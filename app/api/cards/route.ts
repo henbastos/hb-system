@@ -61,21 +61,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (card && card.scheduled_at && card.category) {
-    const { date, start_time } = scheduledToEvent(card.scheduled_at)
-    await supabase.from('events').insert({
+  // Use cardData (request body) instead of card (DB response) to avoid PostgREST schema cache issues
+  if (card && cardData.scheduled_at && cardData.category) {
+    const { date, start_time } = scheduledToEvent(cardData.scheduled_at)
+    const { error: eventError } = await supabase.from('events').insert({
       user_id: user.id,
       card_id: card.id,
-      title: card.title,
-      category: card.category,
+      title: cardData.title,
+      category: cardData.category,
       date,
       start_time,
       duration: 0.5,
       day_of_week: null,
-      description: card.description ?? null,
+      description: cardData.description ?? null,
       color: null,
       meet_link: null,
     })
+    if (eventError) return NextResponse.json({ card, event_error: eventError.message })
   }
 
   return NextResponse.json({ card })
@@ -112,7 +114,7 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  // Sync linked event
+  // Sync linked event — use rest (request body) to avoid PostgREST schema cache issues
   const { data: existingEvent } = await supabase
     .from('events')
     .select('id')
@@ -120,16 +122,16 @@ export async function PUT(request: NextRequest) {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (card && card.scheduled_at && card.category) {
-    const { date, start_time } = scheduledToEvent(card.scheduled_at)
+  if (card && rest.scheduled_at && rest.category) {
+    const { date, start_time } = scheduledToEvent(rest.scheduled_at)
     const eventPayload = {
-      title: card.title,
-      category: card.category,
+      title: rest.title ?? card.title,
+      category: rest.category,
       date,
       start_time,
       duration: 0.5,
       day_of_week: null,
-      description: card.description ?? null,
+      description: rest.description ?? null,
     }
     if (existingEvent) {
       await supabase.from('events').update(eventPayload).eq('id', existingEvent.id).eq('user_id', user.id)
