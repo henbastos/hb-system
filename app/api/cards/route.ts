@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 
+// UTC-3 (America/Sao_Paulo — Goiânia does not observe DST)
+function scheduledToEvent(scheduledAt: string) {
+  const local = new Date(new Date(scheduledAt).getTime() - 3 * 60 * 60 * 1000)
+  return {
+    date: local.toISOString().slice(0, 10),
+    start_time: local.toISOString().slice(11, 19),
+  }
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -52,6 +61,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (card && card.scheduled_at && card.category) {
+    const { date, start_time } = scheduledToEvent(card.scheduled_at)
+    await supabase.from('events').insert({
+      user_id: user.id,
+      card_id: card.id,
+      title: card.title,
+      category: card.category,
+      date,
+      start_time,
+      duration: 0.5,
+      day_of_week: null,
+      description: card.description ?? null,
+      color: null,
+      meet_link: null,
+    })
+  }
+
   return NextResponse.json({ card })
 }
 
@@ -84,6 +110,40 @@ export async function PUT(request: NextRequest) {
         user_id: user.id,
       })
     }
+  }
+
+  // Sync linked event
+  const { data: existingEvent } = await supabase
+    .from('events')
+    .select('id')
+    .eq('card_id', id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (card && card.scheduled_at && card.category) {
+    const { date, start_time } = scheduledToEvent(card.scheduled_at)
+    const eventPayload = {
+      title: card.title,
+      category: card.category,
+      date,
+      start_time,
+      duration: 0.5,
+      day_of_week: null,
+      description: card.description ?? null,
+    }
+    if (existingEvent) {
+      await supabase.from('events').update(eventPayload).eq('id', existingEvent.id).eq('user_id', user.id)
+    } else {
+      await supabase.from('events').insert({
+        ...eventPayload,
+        user_id: user.id,
+        card_id: id,
+        color: null,
+        meet_link: null,
+      })
+    }
+  } else if (existingEvent) {
+    await supabase.from('events').delete().eq('id', existingEvent.id).eq('user_id', user.id)
   }
 
   return NextResponse.json({ card })

@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { KanbanCard } from '@/lib/types'
-import { KANBAN_BOARDS, KanbanBoardKey } from '@/lib/constants'
+import { KANBAN_BOARDS, KanbanBoardKey, EVENT_CATEGORIES } from '@/lib/constants'
+
+const CARD_CATEGORIES = Object.keys(EVENT_CATEGORIES)
 
 interface ServiceRow {
   service_type: string
@@ -48,6 +50,7 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
   )
   const [tagsInput, setTagsInput] = useState(card?.tags?.join(', ') ?? '')
   const [followup, setFollowup] = useState(card?.followup ?? false)
+  const [category, setCategory] = useState(card?.category ?? '')
 
   // Funil-specific fields
   const [dealName, setDealName] = useState(card?.deal_name ?? '')
@@ -92,6 +95,7 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
       column_name: columnName,
       tags: tags.length > 0 ? tags : null,
       scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      category: scheduledAt && category ? category : null,
       followup,
       value: null,
       service_type: null,
@@ -207,6 +211,19 @@ export default function CardModal({ card, board, onClose, onSave, onDelete }: Ca
               style={{ ...field, colorScheme: 'dark' }}
             />
           </div>
+
+          {/* Category — only when date/time is set */}
+          {scheduledAt && (
+            <div>
+              <label style={label}>Categoria no cronograma</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} style={field}>
+                <option value="">Sem categoria (não aparece no cronograma)</option>
+                {CARD_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label style={label}>Descrição</label>

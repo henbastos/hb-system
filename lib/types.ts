@@ -19,6 +19,7 @@ export interface CalendarEvent {
   date?: string | null
   description?: string | null
   meet_link?: string | null
+  card_id?: string | null
   created_at: string
 }
 
@@ -50,5 +51,6 @@ export interface KanbanCard {
   contact_name?: string | null
   contact_phone?: string | null
   deal_services?: DealService[] | null
+  category?: string | null
   created_at: string
 }
