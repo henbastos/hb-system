@@ -17,15 +17,20 @@ const DURATION_OPTIONS = [
   { value: 8, label: '8 horas' },
 ]
 
-const DAY_OPTIONS = [
-  { value: 0, label: 'Segunda-feira' },
-  { value: 1, label: 'Terça-feira' },
-  { value: 2, label: 'Quarta-feira' },
-  { value: 3, label: 'Quinta-feira' },
-  { value: 4, label: 'Sexta-feira' },
-  { value: 5, label: 'Sábado' },
-  { value: 6, label: 'Domingo' },
+const DAY_CHIPS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+const PRESETS = [
+  { label: 'Todo dia', days: [0, 1, 2, 3, 4, 5, 6] },
+  { label: 'Seg a Sex', days: [0, 1, 2, 3, 4] },
+  { label: 'Seg/Qua/Sex', days: [0, 2, 4] },
+  { label: 'Ter/Qui', days: [1, 3] },
 ]
+
+function initRecurrenceDays(event: Partial<CalendarEvent> | null): number[] {
+  if (event?.recurrence_days?.length) return event.recurrence_days
+  if (event?.day_of_week != null) return [event.day_of_week]
+  return [0]
+}
 
 interface EventModalProps {
   event: Partial<CalendarEvent> | null
@@ -36,19 +41,33 @@ interface EventModalProps {
 
 export default function EventModal({ event, onClose, onSave, onDelete }: EventModalProps) {
   const isEdit = !!event?.id
-  const initRecurring = typeof event?.day_of_week === 'number'
+  const initRecurring = !!(event?.day_of_week != null || event?.recurrence_days?.length)
 
   const [title, setTitle] = useState(event?.title ?? '')
   const [category, setCategory] = useState(event?.category ?? 'Trabalho')
   const [recurring, setRecurring] = useState(initRecurring)
   const [date, setDate] = useState(event?.date ?? '')
-  const [dayOfWeek, setDayOfWeek] = useState<number>(event?.day_of_week ?? 0)
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>(() => initRecurrenceDays(event))
   const [startTime, setStartTime] = useState(event?.start_time?.slice(0, 5) ?? '09:00')
   const [duration, setDuration] = useState<number>(event?.duration ?? 1)
   const [description, setDescription] = useState(event?.description ?? '')
   const [meetLink, setMeetLink] = useState(event?.meet_link ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  function toggleDay(idx: number) {
+    setRecurrenceDays(prev => {
+      if (prev.includes(idx)) {
+        if (prev.length === 1) return prev
+        return prev.filter(d => d !== idx)
+      }
+      return [...prev, idx].sort((a, b) => a - b)
+    })
+  }
+
+  function isPresetActive(days: number[]): boolean {
+    return days.length === recurrenceDays.length && days.every(d => recurrenceDays.includes(d))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -63,8 +82,8 @@ export default function EventModal({ event, onClose, onSave, onDelete }: EventMo
       description: description.trim() || null,
       meet_link: meetLink.trim() || null,
       ...(recurring
-        ? { day_of_week: dayOfWeek, date: null }
-        : { date: date || null, day_of_week: null }),
+        ? { day_of_week: null, date: null, recurrence_days: recurrenceDays }
+        : { date: date || null, day_of_week: null, recurrence_days: null }),
     })
     setSaving(false)
   }
@@ -94,6 +113,8 @@ export default function EventModal({ event, onClose, onSave, onDelete }: EventMo
     color: 'var(--text-secondary)',
     marginBottom: '0.3rem',
   }
+
+  console.log('[EventModal] recurring:', recurring, 'recurrenceDays:', recurrenceDays)
 
   return (
     <div
@@ -143,13 +164,69 @@ export default function EventModal({ event, onClose, onSave, onDelete }: EventMo
             </label>
           </div>
 
-          {/* Data ou dia da semana */}
+          {/* Data ou recorrência */}
           {recurring ? (
-            <div>
-              <label style={label}>Dia da semana *</label>
-              <select value={dayOfWeek} onChange={e => setDayOfWeek(Number(e.target.value))} style={field}>
-                {DAY_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {/* Presets */}
+              <div>
+                <label style={label}>Presets</label>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {PRESETS.map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setRecurrenceDays(preset.days)}
+                      style={{
+                        padding: '0.3rem 0.65rem',
+                        borderRadius: '6px',
+                        border: '1px solid',
+                        borderColor: isPresetActive(preset.days) ? 'var(--accent)' : 'var(--border)',
+                        background: isPresetActive(preset.days) ? 'var(--accent)' : 'var(--bg-card)',
+                        color: isPresetActive(preset.days) ? '#fff' : 'var(--text-secondary)',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        transition: 'all 0.1s',
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Day chips */}
+              <div>
+                <label style={label}>Dias</label>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  {DAY_CHIPS.map((dayLabel, idx) => {
+                    const active = recurrenceDays.includes(idx)
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => toggleDay(idx)}
+                        style={{
+                          flex: 1,
+                          padding: '0.4rem 0',
+                          borderRadius: '6px',
+                          border: '1px solid',
+                          borderColor: active ? 'var(--accent)' : 'var(--border)',
+                          background: active ? 'var(--accent)' : 'var(--bg-card)',
+                          color: active ? '#fff' : 'var(--text-muted)',
+                          fontSize: '0.75rem',
+                          fontWeight: active ? '600' : '400',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          transition: 'all 0.1s',
+                        }}
+                      >
+                        {dayLabel}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           ) : (
             <div>

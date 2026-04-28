@@ -21,9 +21,11 @@ interface WeekViewProps {
 function getEventsForDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
   const dateStr = toDateString(day)
   const dow = toDayOfWeek(day)
-  return events.filter(e =>
-    e.date ? e.date === dateStr : e.day_of_week === dow
-  )
+  return events.filter(e => {
+    if (e.date) return e.date === dateStr
+    const days = e.recurrence_days ?? (e.day_of_week != null ? [e.day_of_week] : null)
+    return days != null && days.includes(dow)
+  })
 }
 
 export default function WeekView({

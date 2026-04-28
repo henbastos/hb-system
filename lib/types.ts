@@ -16,6 +16,7 @@ export interface CalendarEvent {
   start_time: string
   duration: number
   day_of_week?: number | null
+  recurrence_days?: number[] | null
   date?: string | null
   description?: string | null
   meet_link?: string | null

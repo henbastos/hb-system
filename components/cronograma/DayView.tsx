@@ -35,7 +35,8 @@ export default function DayView({
   const dow = toDayOfWeek(day)
 
   const dayEvents = events.filter(e => {
-    const matchDay = e.date ? e.date === dateStr : e.day_of_week === dow
+    const days = e.recurrence_days ?? (e.day_of_week != null ? [e.day_of_week] : null)
+    const matchDay = e.date ? e.date === dateStr : (days != null && days.includes(dow))
     const matchFilter = filterCategories.length === 0 || filterCategories.includes(e.category)
     return matchDay && matchFilter
   })
