@@ -114,8 +114,6 @@ export default function EventModal({ event, onClose, onSave, onDelete }: EventMo
     marginBottom: '0.3rem',
   }
 
-  console.log('[EventModal] recurring:', recurring, 'recurrenceDays:', recurrenceDays)
-
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}
